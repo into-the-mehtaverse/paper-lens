@@ -8,10 +8,12 @@
     "activeTab",
     "scripting",
     "sidePanel",
-    "downloads"
+    "downloads",
+    "offscreen"
   ],
   "host_permissions": [
     "https://arxiv.org/*",
+    "https://export.arxiv.org/*",
     "https://openreview.net/*"
   ],
   "background": {
@@ -49,7 +51,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["src/components/reader/index.html"],
+      "resources": ["src/components/reader/index.html", "src/offscreen/index.html", "pdf.worker.min.mjs", "pdf.min.mjs"],
       "matches": ["<all_urls>"]
     }
   ]

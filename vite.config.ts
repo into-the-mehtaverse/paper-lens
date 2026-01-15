@@ -14,4 +14,13 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      input: {
+        // Include offscreen document as an entry point
+        // crxjs doesn't auto-detect it since it's not in a standard manifest field
+        offscreen: path.resolve(__dirname, 'src/offscreen/index.html'),
+      },
+    },
+  },
 });

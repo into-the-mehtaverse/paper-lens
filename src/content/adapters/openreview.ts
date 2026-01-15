@@ -109,14 +109,14 @@ export function extractOpenReviewMetadata(document: Document, url: string): Open
 export function toPaperMetadata(openReviewMeta: OpenReviewMetadata, url: string): PaperMetadata {
   const now = Date.now();
   console.log('[OpenReview Adapter] Converting to PaperMetadata, PDF URL:', openReviewMeta.pdfUrl);
-  const metadata = {
+  const metadata: PaperMetadata = {
     paperId: `openreview:${openReviewMeta.forumId}` as const,
     title: openReviewMeta.title,
     authors: openReviewMeta.authors,
     abstract: openReviewMeta.abstract,
     venue: openReviewMeta.venue,
     year: openReviewMeta.year,
-    source: 'openreview',
+    source: 'openreview' as const,
     pdfUrl: openReviewMeta.pdfUrl,
     sourceUrl: url,
     firstSeenAt: now,

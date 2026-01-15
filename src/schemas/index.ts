@@ -43,7 +43,7 @@ export type Location = z.infer<typeof LocationSchema>;
 // Evidence span
 export const EvidenceSpanSchema = z.object({
   chunkId: z.string(),
-  quote: z.string().max(250),
+  quote: z.string(),
   location: LocationSchema,
 });
 

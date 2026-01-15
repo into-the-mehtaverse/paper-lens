@@ -23,7 +23,14 @@ export function buildAnalysisPrompt(
   const chunksText = Object.entries(retrievedChunks)
     .map(([task, chunks]) => {
       const chunksList = chunks
-        .map((c) => `[${c.chunkId}] ${c.text.substring(0, 500)}...`)
+        .map((c) => {
+          const locationInfo = [
+            c.section ? `Section: ${c.section}` : null,
+            c.pageStart ? `Page: ${c.pageStart}${c.pageEnd && c.pageEnd !== c.pageStart ? `-${c.pageEnd}` : ''}` : null,
+          ].filter(Boolean).join(', ');
+          const locationPrefix = locationInfo ? `[${locationInfo}] ` : '';
+          return `[${c.chunkId}] ${locationPrefix}${c.text.substring(0, 500)}...`;
+        })
         .join('\n\n');
       return `## ${task}\n${chunksList}`;
     })

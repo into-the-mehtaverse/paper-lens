@@ -12,6 +12,7 @@ import {
   saveAnalysis,
 } from '@/db';
 import type { PaperMetadata, Chunk, StoredAnalysis } from '@/schemas';
+import { extractPdfText, closeOffscreenDocument } from './services/pdf-extraction';
 
 // Debug helper: Log that service worker is loaded
 console.log('[Background Service Worker] PaperLens background script loaded');
@@ -31,8 +32,15 @@ chrome.sidePanel.setOptions({
   enabled: true,
 });
 
-// Listen for paper detection
+// Listen for messages from content scripts, popup, sidepanel, etc.
 chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => {
+  // Ignore internal messages from offscreen document
+  if (message.type === 'OFFSCREEN_READY') {
+    return false;
+  }
+  
+  console.log('[Background] Received message:', message.type);
+  
   if (message.type === 'PAPER_DETECTED') {
     handlePaperDetected(message.data);
     sendResponse({ success: true });
@@ -40,7 +48,7 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
     handleAnalyzePaper(message.paperId, message.options)
       .then(() => sendResponse({ success: true }))
       .catch((err) => sendResponse({ success: false, error: String(err) }));
-    return true; // Keep channel open
+    return true; // Keep channel open for async
   } else if (message.type === 'ANALYZE_PDF') {
     handleAnalyzePdf(message.data)
       .then(() => sendResponse({ success: true }))
@@ -124,9 +132,15 @@ async function handleAnalyzePaper(paperId: string, options: any = {}) {
   }
 
   let chunks = await getChunks(paperId);
+  console.log('[Background] handleAnalyzePaper called for:', paperId, {
+    existingChunks: chunks.length,
+    hasPdfUrl: !!paper.pdfUrl,
+    source: paper.source,
+  });
 
   // If no chunks, extract content
   if (chunks.length === 0) {
+    console.log('[Background] No chunks found, starting extraction');
     // Notify UI of extraction progress
     chrome.runtime.sendMessage({
       type: 'ANALYSIS_PROGRESS',
@@ -135,15 +149,10 @@ async function handleAnalyzePaper(paperId: string, options: any = {}) {
     });
 
     if (paper.pdfUrl && (paper.source === 'arxiv' || paper.source === 'openreview' || paper.source === 'pdf')) {
-      // Extract from PDF
-      console.log('[Background] Starting PDF extraction for paper:', paper.paperId);
-      console.log('[Background] Paper source:', paper.source);
-      console.log('[Background] PDF URL from paper metadata:', paper.pdfUrl);
+      console.log('[Background] Extracting PDF:', paper.pdfUrl);
       try {
-        const { extractPdfText } = await import('@/components/reader/pdf-extractor');
-        console.log('[Background] Calling extractPdfText with URL:', paper.pdfUrl);
+        // Use the clean extraction service
         const pdfData = await extractPdfText(paper.pdfUrl);
-        console.log('[Background] PDF extraction successful, pages:', pdfData.pages.length);
 
         if (pdfData.pages.length === 0) {
           throw new Error('PDF extraction returned no pages');
@@ -155,21 +164,38 @@ async function handleAnalyzePaper(paperId: string, options: any = {}) {
           throw new Error('No chunks created from PDF');
         }
 
+        // Log extraction results
+        const sectionCounts = chunks.reduce((acc, chunk) => {
+          const section = chunk.section || 'unknown';
+          acc[section] = (acc[section] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        
+        console.log('[Background] PDF extraction complete:', {
+          pages: pdfData.pages.length,
+          chunks: chunks.length,
+          sections: sectionCounts,
+        });
+
         await saveChunks(chunks);
+        
+        // Close offscreen document to free resources
+        await closeOffscreenDocument();
       } catch (error) {
-        console.error('PDF extraction failed:', error);
+        console.error('[Background] PDF extraction failed:', error);
+        
         // Fall back to abstract-only if PDF fails
         if (paper.abstract) {
           const { chunkText } = await import('@/rag/chunking');
           chunks = chunkText(paper.abstract, {}, { paperId });
           if (chunks.length > 0) {
             await saveChunks(chunks);
-            console.log('Using abstract-only content for analysis');
+            console.log('[Background] Using abstract-only content for analysis');
           } else {
             throw new Error('Failed to create chunks from abstract.');
           }
         } else {
-          throw new Error(`Failed to extract PDF: ${error instanceof Error ? error.message : String(error)}. No abstract available as fallback.`);
+          throw new Error(`PDF extraction failed: ${error instanceof Error ? error.message : String(error)}. No abstract available.`);
         }
       }
     } else if (paper.abstract) {
@@ -212,9 +238,11 @@ async function analyzePaper(
   let embeddings = await getEmbeddings(paper.paperId);
 
   if (embeddings.length === 0) {
+    console.log('[Background] Generating embeddings for', chunks.length, 'chunks');
     // Generate embeddings for all chunks
     const texts = chunks.map(c => c.text);
     const vectors = await embedProvider.embedBatch(texts);
+    console.log('[Background] Generated', vectors.length, 'embeddings');
 
     embeddings = chunks.map((chunk, i) => ({
       paperId: paper.paperId,
@@ -225,6 +253,9 @@ async function analyzePaper(
     }));
 
     await saveEmbeddings(embeddings);
+    console.log('[Background] Saved', embeddings.length, 'embeddings to database');
+  } else {
+    console.log('[Background] Using existing embeddings:', embeddings.length);
   }
 
   // Compute centroid
@@ -240,9 +271,37 @@ async function analyzePaper(
   // Task-specific retrieval
   const embeddingMap = new Map(embeddings.map(e => [e.chunkId, e]));
 
+  // Diagnostic: Log chunk and embedding status
+  console.log('[Background] Starting retrieval:', {
+    totalChunks: chunks.length,
+    totalEmbeddings: embeddings.length,
+    chunksWithEmbeddings: chunks.filter(c => embeddingMap.has(c.chunkId)).length,
+    chunksBySection: Object.entries(
+      chunks.reduce((acc, c) => {
+        const section = c.section || 'no-section';
+        acc[section] = (acc[section] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>)
+    ),
+  });
+
   const retrievedChunks: Record<string, Chunk[]> = {};
 
   for (const [task, taskConfig] of Object.entries(TASK_RETRIEVAL_CONFIGS)) {
+    // Diagnostic: Log what sections we're filtering for
+    const sectionsToMatch = taskConfig.sections || [];
+    const chunksMatchingSections = chunks.filter(chunk => {
+      if (!chunk.section) return false;
+      return sectionsToMatch.some(section =>
+        chunk.section!.toLowerCase().includes(section.toLowerCase())
+      );
+    });
+    console.log(`[Background] Task ${task}:`, {
+      requestedSections: sectionsToMatch,
+      chunksMatchingSections: chunksMatchingSections.length,
+      sectionsFound: [...new Set(chunksMatchingSections.map(c => c.section))],
+    });
+
     const results = retrieveForTask(
       centroid,
       chunks,
@@ -251,6 +310,19 @@ async function analyzePaper(
       { sections: taskConfig.sections ? [...taskConfig.sections] : undefined }
     );
     retrievedChunks[task] = results.map(r => r.chunk);
+    
+    // Diagnostic: Log retrieval results
+    const retrievedSections = retrievedChunks[task].map(c => c.section || 'unknown');
+    const sectionCounts = retrievedSections.reduce((acc, s) => {
+      acc[s] = (acc[s] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    console.log(`[Background] Retrieved chunks for ${task}:`, {
+      count: retrievedChunks[task].length,
+      sections: sectionCounts,
+      pages: retrievedChunks[task].map(c => c.pageStart).filter(Boolean),
+      topScores: results.slice(0, 3).map(r => r.score),
+    });
   }
 
   // Notify UI of progress

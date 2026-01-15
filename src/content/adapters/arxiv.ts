@@ -84,12 +84,12 @@ export function extractArxivMetadata(document: Document, url: string): ArxivMeta
 export function toPaperMetadata(arxivMeta: ArxivMetadata, url: string): PaperMetadata {
   const now = Date.now();
   console.log('[arXiv Adapter] Converting to PaperMetadata, PDF URL:', arxivMeta.pdfUrl);
-  const metadata = {
+  const metadata: PaperMetadata = {
     paperId: `arxiv:${arxivMeta.arxivId}` as const,
     title: arxivMeta.title,
     authors: arxivMeta.authors,
     abstract: arxivMeta.abstract,
-    source: 'arxiv',
+    source: 'arxiv' as const,
     pdfUrl: arxivMeta.pdfUrl,
     sourceUrl: url,
     firstSeenAt: now,

@@ -22,19 +22,39 @@ function defaultTokenEstimate(text: string): number {
  * Detect section headers in text using heuristics
  */
 function detectSection(text: string): string | undefined {
-  // Common section patterns
+  // Common section patterns - more comprehensive
   const sectionPatterns = [
-    /^(abstract|introduction|related work|methodology|methods|experiments|results|discussion|conclusion|references|appendix)/i,
-    /^(\d+\.?\s+[A-Z][a-z]+)/, // Numbered sections like "1. Introduction"
-    /^([A-Z][A-Z\s]+)$/, // ALL CAPS headers
+    // Standard section names (case-insensitive, start of line)
+    /^(abstract|introduction|related work|background|methodology|methods|method|experiments|experimental|results|evaluation|discussion|conclusion|conclusions|references|bibliography|appendix|acknowledgments?)/i,
+    // Numbered sections like "1. Introduction" or "1 Introduction"
+    /^(\d+\.?\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/,
+    // ALL CAPS headers (likely section titles)
+    /^([A-Z][A-Z\s]{2,30})$/,
+    // Section headers with colons like "Method: ..." or "Results:"
+    /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*):\s*$/,
   ];
 
-  const lines = text.split('\n').slice(0, 3); // Check first few lines
+  // Check more lines and also look for common section indicators
+  const lines = text.split('\n').slice(0, 10); // Check first 10 lines
   for (const line of lines) {
     const trimmed = line.trim();
+    // Skip empty lines and very short lines
+    if (trimmed.length < 3) continue;
+    
     for (const pattern of sectionPatterns) {
       const match = trimmed.match(pattern);
       if (match) {
+        const sectionName = (match[1] || trimmed).toLowerCase();
+        // Normalize common variations
+        if (sectionName.includes('method')) return 'methods';
+        if (sectionName.includes('experiment')) return 'experiments';
+        if (sectionName.includes('result')) return 'results';
+        if (sectionName.includes('discuss')) return 'discussion';
+        if (sectionName.includes('conclusion')) return 'conclusion';
+        if (sectionName.includes('abstract')) return 'abstract';
+        if (sectionName.includes('introduction') || sectionName.includes('intro')) return 'introduction';
+        if (sectionName.includes('related work') || sectionName.includes('related')) return 'related work';
+        
         return match[1] || trimmed.substring(0, 50);
       }
     }

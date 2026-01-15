@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PaperLens PDF Worker</title>
+</head>
+<body>
+  <!-- 
+    Offscreen document for PDF text extraction.
+    This page loads pdf-worker.ts which handles all extraction logic.
+    The service worker cannot use pdf.js directly due to DOM API requirements.
+  -->
+  <script type="module" src="./index.ts"></script>
+</body>
+</html>
