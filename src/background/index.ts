@@ -1,7 +1,7 @@
 import { chunkPdfPages } from '@/rag/chunking';
 import { createEmbeddingProvider, computeCentroid } from '@/rag/embed';
 import { retrieveForTask, TASK_RETRIEVAL_CONFIGS } from '@/rag/retrieval';
-import { createLLMProvider } from '@/rag/llm';
+import { createLLMProvider } from '@/rag/generation';
 import {
   savePaper,
   getPaper,
@@ -327,7 +327,7 @@ async function getLLMConfig(): Promise<{
   const result = await chrome.storage.sync.get(['llmConfig']);
   const defaultConfig = {
     provider: 'openai',
-    model: 'gpt-4-turbo-preview',
+    model: 'gpt-5.2',
     embeddingProvider: 'openai',
     embeddingModel: 'text-embedding-3-small',
   };

@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { AnalysisSchema, type Analysis } from '@/schemas';
 import type { Chunk } from '@/schemas';
+import { buildAnalysisPrompt, type AnalysisOptions } from './prompt';
 
 export interface LLMProvider {
   generateAnalysis(
@@ -17,11 +18,6 @@ export interface LLMConfig {
   baseUrl?: string;
 }
 
-export interface AnalysisOptions {
-  tone?: 'critical' | 'balanced' | 'experimental';
-  privacyMode?: 'abstract-only' | 'snippets' | 'full-text';
-}
-
 export class OpenAILLMProvider implements LLMProvider {
   private client: OpenAI;
   private model: string;
@@ -31,7 +27,7 @@ export class OpenAILLMProvider implements LLMProvider {
       throw new Error('OpenAI API key required');
     }
     this.client = new OpenAI({ apiKey: config.apiKey });
-    this.model = config.model || 'gpt-4-turbo-preview';
+    this.model = config.model || 'gpt-5.2';
   }
 
   async generateAnalysis(
@@ -150,88 +146,4 @@ export function createLLMProvider(config: LLMConfig): LLMProvider {
   }
 }
 
-/**
- * Build analysis prompt from paper metadata and retrieved chunks
- */
-function buildAnalysisPrompt(
-  paperMetadata: { title: string; authors: string[]; abstract?: string; paperId?: string },
-  retrievedChunks: Record<string, Chunk[]>,
-  options: AnalysisOptions = {}
-): string {
-  const tone = options.tone || 'balanced';
-  const toneInstructions = {
-    critical: 'Be more critical and skeptical. Focus on potential weaknesses.',
-    balanced: 'Provide balanced, constructive feedback.',
-    experimental: 'Focus on experimental rigor and reproducibility.',
-  }[tone];
-
-  const chunksText = Object.entries(retrievedChunks)
-    .map(([task, chunks]) => {
-      const chunksList = chunks
-        .map((c) => `[${c.chunkId}] ${c.text.substring(0, 500)}...`)
-        .join('\n\n');
-      return `## ${task}\n${chunksList}`;
-    })
-    .join('\n\n');
-
-  return `Analyze this research paper and generate a structured critique.
-
-Paper:
-Title: ${paperMetadata.title}
-Authors: ${paperMetadata.authors.join(', ')}
-${paperMetadata.abstract ? `Abstract: ${paperMetadata.abstract}` : ''}
-
-Retrieved Evidence Chunks:
-${chunksText}
-
-Instructions:
-${toneInstructions}
-
-Generate a JSON object with the following structure:
-{
-  "paper": {
-    "title": "${paperMetadata.title.replace(/"/g, '\\"')}",
-    "authors": ${JSON.stringify(paperMetadata.authors)},
-    "source": "${paperMetadata.paperId?.startsWith('arxiv:') ? 'arxiv' : paperMetadata.paperId?.startsWith('openreview:') ? 'openreview' : 'pdf'}",
-    "id": "${paperMetadata.paperId || 'paper-id'}"
-  },
-  "summaryBullets": ["bullet 1", "bullet 2", ...], // 5-8 bullets
-  "keyClaims": [
-    {
-      "claim": "claim text",
-      "evidence": [{"chunkId": "...", "quote": "...", "location": {...}}]
-    }
-  ], // 3-7 claims
-  "questions": [
-    {
-      "question": "question text",
-      "evidence": [{"chunkId": "...", "quote": "...", "location": {...}}]
-    }
-  ], // 5-12 questions
-  "missingAblations": [
-    {
-      "description": "description",
-      "suggestedExperiment": "experiment",
-      "evidence": [{"chunkId": "...", "quote": "...", "location": {...}}]
-    }
-  ], // 3-10 items
-  "potentialIssues": [
-    {
-      "issue": "issue description",
-      "severity": "Low|Med|High",
-      "confidence": 0.0-1.0,
-      "evidence": [{"chunkId": "...", "quote": "...", "location": {...}}],
-      "suggestedCheck": "what to check"
-    }
-  ], // 3-10 items
-  "replicationChecklist": ["item 1", "item 2", ...], // 5-12 items
-  "nextWeekTests": ["test 1", "test 2", ...], // 2-5 items
-  "modelMeta": {
-    "provider": "openai",
-    "model": "gpt-4",
-    "timestamp": ${Date.now()}
-  }
-}
-
-IMPORTANT: Every critique item MUST include at least one evidence span with chunkId, quote, and location.`;
-}
+// buildAnalysisPrompt moved to prompt.ts

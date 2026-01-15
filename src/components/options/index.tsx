@@ -8,7 +8,7 @@ function Options() {
   const [config, setConfig] = useState({
     provider: 'openai',
     apiKey: '',
-    model: 'gpt-4-turbo-preview',
+    model: 'gpt-5.2',
     embeddingProvider: 'openai',
     embeddingModel: 'text-embedding-3-small',
   });
@@ -110,11 +110,11 @@ function Options() {
                 type="text"
                 value={config.model}
                 onChange={(e) => setConfig({ ...config, model: e.target.value })}
-                placeholder="gpt-4-turbo-preview"
+                placeholder="gpt-5.2"
                 className="w-full px-3 py-2 border rounded-md"
               />
               <p className="text-xs text-muted-foreground">
-                Default: gpt-4-turbo-preview (OpenAI) or llama2 (Ollama)
+                Default: gpt-5.2 (OpenAI) or llama2 (Ollama). Options: gpt-5.2, gpt-5.1, gpt-5-mini, gpt-5-nano
               </p>
             </div>
 
