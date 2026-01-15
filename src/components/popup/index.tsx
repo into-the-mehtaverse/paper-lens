@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Button } from '@/ui/components/button';
+import { Button } from '@/components/ui/components/button';
 import '../ui/styles.css';
 
 function Popup() {

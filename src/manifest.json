@@ -29,10 +29,10 @@
     }
   ],
   "side_panel": {
-    "default_path": "src/sidepanel/index.html"
+    "default_path": "src/components/sidepanel/index.html"
   },
   "action": {
-    "default_popup": "src/popup/index.html",
+    "default_popup": "src/components/popup/index.html",
     "default_icon": {
       "16": "src/icons/icon-16.png",
       "32": "src/icons/icon-32.png",
@@ -40,7 +40,7 @@
       "128": "src/icons/icon-128.png"
     }
   },
-  "options_page": "src/options/index.html",
+  "options_page": "src/components/options/index.html",
   "icons": {
     "16": "src/icons/icon-16.png",
     "32": "src/icons/icon-32.png",
@@ -49,7 +49,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["src/reader/index.html"],
+      "resources": ["src/components/reader/index.html"],
       "matches": ["<all_urls>"]
     }
   ]

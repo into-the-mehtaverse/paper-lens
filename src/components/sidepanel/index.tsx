@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/ui/components/card';
-import { Button } from '@/ui/components/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/ui/components/tabs';
-import { Progress } from '@/ui/components/progress';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/components/card';
+import { Button } from '@/components/ui/components/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/components/tabs';
+import { Progress } from '@/components/ui/components/progress';
 import type { PaperMetadata, StoredAnalysis, Analysis } from '@/schemas';
 import '../ui/styles.css';
 

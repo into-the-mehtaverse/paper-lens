@@ -1,7 +1,7 @@
-import { chunkPdfPages } from '@/utils/chunking';
-import { createEmbeddingProvider, computeCentroid } from '@/embed';
-import { retrieveForTask, TASK_RETRIEVAL_CONFIGS } from '@/retrieval';
-import { createLLMProvider } from '@/llm';
+import { chunkPdfPages } from '@/rag/chunking';
+import { createEmbeddingProvider, computeCentroid } from '@/rag/embed';
+import { retrieveForTask, TASK_RETRIEVAL_CONFIGS } from '@/rag/retrieval';
+import { createLLMProvider } from '@/rag/llm';
 import {
   savePaper,
   getPaper,
@@ -10,7 +10,7 @@ import {
   saveEmbeddings,
   getEmbeddings,
   saveAnalysis,
-} from '@/store/db';
+} from '@/db';
 import type { PaperMetadata, Chunk, StoredAnalysis } from '@/schemas';
 
 // Debug helper: Log that service worker is loaded
@@ -20,14 +20,14 @@ console.log('[Background Service Worker] To see PDF fetch logs, check this conso
 // Initialize side panel on install
 chrome.runtime.onInstalled.addListener(() => {
   chrome.sidePanel.setOptions({
-    path: 'src/sidepanel/index.html',
+    path: 'src/components/sidepanel/index.html',
     enabled: true,
   });
 });
 
 // Also set side panel when extension starts (for already installed extensions)
 chrome.sidePanel.setOptions({
-  path: 'src/sidepanel/index.html',
+  path: 'src/components/sidepanel/index.html',
   enabled: true,
 });
 
@@ -52,7 +52,7 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
       .catch((err) => sendResponse({ success: false, error: String(err) }));
     return true;
   } else if (message.type === 'CLEAR_ALL') {
-    import('@/store/db').then(({ clearAll }) => {
+    import('@/db').then(({ clearAll }) => {
       clearAll()
         .then(() => sendResponse({ success: true }))
         .catch((err) => sendResponse({ success: false, error: String(err) }));
@@ -140,7 +140,7 @@ async function handleAnalyzePaper(paperId: string, options: any = {}) {
       console.log('[Background] Paper source:', paper.source);
       console.log('[Background] PDF URL from paper metadata:', paper.pdfUrl);
       try {
-        const { extractPdfText } = await import('@/reader/pdf-extractor');
+        const { extractPdfText } = await import('@/components/reader/pdf-extractor');
         console.log('[Background] Calling extractPdfText with URL:', paper.pdfUrl);
         const pdfData = await extractPdfText(paper.pdfUrl);
         console.log('[Background] PDF extraction successful, pages:', pdfData.pages.length);
@@ -160,7 +160,7 @@ async function handleAnalyzePaper(paperId: string, options: any = {}) {
         console.error('PDF extraction failed:', error);
         // Fall back to abstract-only if PDF fails
         if (paper.abstract) {
-          const { chunkText } = await import('@/utils/chunking');
+          const { chunkText } = await import('@/rag/chunking');
           chunks = chunkText(paper.abstract, {}, { paperId });
           if (chunks.length > 0) {
             await saveChunks(chunks);
@@ -174,7 +174,7 @@ async function handleAnalyzePaper(paperId: string, options: any = {}) {
       }
     } else if (paper.abstract) {
       // Extract from abstract only
-      const { chunkText } = await import('@/utils/chunking');
+      const { chunkText } = await import('@/rag/chunking');
       chunks = chunkText(paper.abstract, {}, { paperId });
       await saveChunks(chunks);
     } else {
