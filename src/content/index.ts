@@ -1,5 +1,9 @@
 import { detectPaper } from './adapters';
 
+// Debug helper: Log that content script is loaded
+console.log('[Content Script] PaperLens content script loaded');
+console.log('[Content Script] PDF URL extraction logs will appear in this console (page DevTools)');
+
 // Listen for messages from background or side panel
 chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => {
   if (message.type === 'DETECT_PAPER') {

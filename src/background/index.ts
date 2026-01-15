@@ -13,6 +13,10 @@ import {
 } from '@/store/db';
 import type { PaperMetadata, Chunk, StoredAnalysis } from '@/schemas';
 
+// Debug helper: Log that service worker is loaded
+console.log('[Background Service Worker] PaperLens background script loaded');
+console.log('[Background Service Worker] To see PDF fetch logs, check this console (chrome://extensions -> Inspect views: service worker)');
+
 // Initialize side panel on install
 chrome.runtime.onInstalled.addListener(() => {
   chrome.sidePanel.setOptions({
@@ -132,9 +136,14 @@ async function handleAnalyzePaper(paperId: string, options: any = {}) {
 
     if (paper.pdfUrl && (paper.source === 'arxiv' || paper.source === 'openreview' || paper.source === 'pdf')) {
       // Extract from PDF
+      console.log('[Background] Starting PDF extraction for paper:', paper.paperId);
+      console.log('[Background] Paper source:', paper.source);
+      console.log('[Background] PDF URL from paper metadata:', paper.pdfUrl);
       try {
         const { extractPdfText } = await import('@/reader/pdf-extractor');
+        console.log('[Background] Calling extractPdfText with URL:', paper.pdfUrl);
         const pdfData = await extractPdfText(paper.pdfUrl);
+        console.log('[Background] PDF extraction successful, pages:', pdfData.pages.length);
 
         if (pdfData.pages.length === 0) {
           throw new Error('PDF extraction returned no pages');

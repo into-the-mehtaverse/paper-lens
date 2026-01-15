@@ -61,6 +61,9 @@ export function extractArxivMetadata(document: Document, url: string): ArxivMeta
   // Extract PDF URL
   const pdfLink = document.querySelector('a[href*="/pdf/"]') as HTMLAnchorElement;
   const pdfUrl = pdfLink?.href || `https://arxiv.org/pdf/${arxivId}.pdf`;
+  console.log('[arXiv Adapter] Extracted PDF URL:', pdfUrl);
+  console.log('[arXiv Adapter] PDF link element:', pdfLink?.href);
+  console.log('[arXiv Adapter] Constructed fallback URL:', `https://arxiv.org/pdf/${arxivId}.pdf`);
 
   if (!title || authors.length === 0) {
     return null;
@@ -80,7 +83,8 @@ export function extractArxivMetadata(document: Document, url: string): ArxivMeta
  */
 export function toPaperMetadata(arxivMeta: ArxivMetadata, url: string): PaperMetadata {
   const now = Date.now();
-  return {
+  console.log('[arXiv Adapter] Converting to PaperMetadata, PDF URL:', arxivMeta.pdfUrl);
+  const metadata = {
     paperId: `arxiv:${arxivMeta.arxivId}` as const,
     title: arxivMeta.title,
     authors: arxivMeta.authors,
@@ -96,4 +100,6 @@ export function toPaperMetadata(arxivMeta: ArxivMetadata, url: string): PaperMet
     starred: false,
     tags: [],
   };
+  console.log('[arXiv Adapter] Final PaperMetadata PDF URL:', metadata.pdfUrl);
+  return metadata;
 }

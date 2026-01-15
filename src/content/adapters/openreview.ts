@@ -76,13 +76,17 @@ export function extractOpenReviewMetadata(document: Document, url: string): Open
   // Extract PDF URL
   const pdfLink = document.querySelector('a[href*=".pdf"], a[href*="/pdf"]') as HTMLAnchorElement;
   let pdfUrl = pdfLink?.href;
+  console.log('[OpenReview Adapter] Found PDF link element:', pdfLink?.href);
   if (pdfUrl && !pdfUrl.startsWith('http')) {
     pdfUrl = new URL(pdfUrl, url).href;
+    console.log('[OpenReview Adapter] Resolved relative URL to:', pdfUrl);
   }
   if (!pdfUrl) {
     // Fallback: construct PDF URL from forum ID
     pdfUrl = `https://openreview.net/pdf?id=${forumId}`;
+    console.log('[OpenReview Adapter] Using fallback PDF URL:', pdfUrl);
   }
+  console.log('[OpenReview Adapter] Final PDF URL:', pdfUrl);
 
   if (!title || authors.length === 0) {
     return null;
@@ -104,7 +108,8 @@ export function extractOpenReviewMetadata(document: Document, url: string): Open
  */
 export function toPaperMetadata(openReviewMeta: OpenReviewMetadata, url: string): PaperMetadata {
   const now = Date.now();
-  return {
+  console.log('[OpenReview Adapter] Converting to PaperMetadata, PDF URL:', openReviewMeta.pdfUrl);
+  const metadata = {
     paperId: `openreview:${openReviewMeta.forumId}` as const,
     title: openReviewMeta.title,
     authors: openReviewMeta.authors,
@@ -122,4 +127,6 @@ export function toPaperMetadata(openReviewMeta: OpenReviewMetadata, url: string)
     starred: false,
     tags: [],
   };
+  console.log('[OpenReview Adapter] Final PaperMetadata PDF URL:', metadata.pdfUrl);
+  return metadata;
 }

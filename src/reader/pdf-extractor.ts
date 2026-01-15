@@ -29,15 +29,22 @@ export async function extractPdfText(pdfUrl: string): Promise<{
   pages: PdfPage[];
   metadata: PdfMetadata;
 }> {
+  console.log('[PDF Extractor] Attempting to fetch PDF from URL:', pdfUrl);
   // Fetch PDF as ArrayBuffer to work in service workers
   let arrayBuffer: ArrayBuffer;
   try {
+    console.log('[PDF Extractor] Starting fetch request...');
     const response = await fetch(pdfUrl);
+    console.log('[PDF Extractor] Fetch response status:', response.status, response.statusText);
+    console.log('[PDF Extractor] Fetch response headers:', Object.fromEntries(response.headers.entries()));
     if (!response.ok) {
       throw new Error(`Failed to fetch PDF: ${response.status} ${response.statusText}`);
     }
     arrayBuffer = await response.arrayBuffer();
+    console.log('[PDF Extractor] Successfully fetched PDF, size:', arrayBuffer.byteLength, 'bytes');
   } catch (error) {
+    console.error('[PDF Extractor] Fetch error:', error);
+    console.error('[PDF Extractor] Failed URL:', pdfUrl);
     throw new Error(`Failed to fetch PDF from ${pdfUrl}: ${error instanceof Error ? error.message : String(error)}`);
   }
 
